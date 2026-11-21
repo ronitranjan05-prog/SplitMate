@@ -1,0 +1,495 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#090d1b">
+    <title>{{ group.name }} | SplitMate</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        .activity-item {
+            display:flex; align-items:center; gap:15px;
+            padding:17px 0;
+            border-bottom:1px solid rgba(255,255,255,.08);
+        }
+        .activity-item:last-child {border-bottom:none}
+        .activity-icon {
+            width:43px;height:43px;min-width:43px;
+            display:flex;align-items:center;justify-content:center;
+            border-radius:14px;font-size:19px;
+            background:rgba(169,159,255,.13);
+        }
+        .activity-icon.expense {color:#a99fff}
+        .activity-icon.payment {color:#36d6a0;background:rgba(54,214,160,.12)}
+        .activity-info {flex:1;min-width:0}
+        .activity-info strong {display:block;color:#fff;overflow-wrap:anywhere}
+        .activity-info small {display:block;color:#929bb5;margin-top:5px;font-size:12px}
+        .activity-amount {font-weight:800;white-space:nowrap}
+        .activity-amount.expense {color:#a99fff}
+        .activity-amount.payment {color:#36d6a0}
+        .activity-label,.category-badge {
+            display:inline-block;padding:4px 9px;margin-top:7px;
+            border-radius:20px;font-size:11px;font-weight:700;
+            background:rgba(54,214,160,.12);color:#62e5b8;
+        }
+        .category-select,.upi-input {
+            width:100%;padding:13px 14px;margin-bottom:16px;
+            border:1px solid rgba(169,159,255,.25);
+            border-radius:12px;background:#151b31;color:#fff;
+            font-size:14px;outline:none;
+        }
+        .split-options {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+        .split-option {
+            padding:12px;border:1px solid rgba(169,159,255,.25);
+            border-radius:12px;background:#151b31;color:#aeb7d0;
+            cursor:pointer;text-align:center;font-size:13px;
+        }
+        .split-option:has(input:checked) {
+            border-color:#a99fff;background:rgba(169,159,255,.15);color:#fff;
+        }
+        .split-option input {width:auto;margin:0 5px 0 0;accent-color:#a99fff}
+        .custom-split-box {
+            display:none;padding:15px;margin-bottom:16px;
+            border:1px solid rgba(169,159,255,.2);
+            border-radius:14px;background:rgba(169,159,255,.06);
+        }
+        .custom-split-box h3 {margin:0 0 6px;color:#fff;font-size:15px}
+        .custom-split-box p {margin:0 0 15px;color:#929bb5;font-size:12px}
+        .share-row {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+        .share-row label {margin:0;color:#e6e9f5;flex:1}
+        .share-row input {max-width:125px;margin:0}
+        .share-total {
+            display:flex;justify-content:space-between;gap:10px;
+            padding-top:13px;margin-top:12px;
+            border-top:1px solid rgba(255,255,255,.1);
+            color:#fff;font-weight:700;
+        }
+        .share-status {margin-top:10px;font-size:12px;color:#929bb5}
+        .share-status.valid {color:#36d6a0}
+        .share-status.invalid {color:#ff8585}
+        .upi-card {
+            padding:14px;margin:12px 0;
+            border:1px solid rgba(169,159,255,.18);
+            border-radius:13px;background:rgba(169,159,255,.05);
+        }
+        .upi-card strong {color:#fff}
+        .upi-card small {display:block;color:#929bb5;margin-top:5px}
+        .upi-action {
+            display:inline-flex;align-items:center;justify-content:center;
+            margin-top:11px;padding:10px 15px;
+            border-radius:10px;background:#36d6a0;color:#071b17;
+            font-weight:800;text-decoration:none;font-size:13px;
+        }
+        .upi-action:hover {filter:brightness(1.08)}
+        .upi-missing {color:#ffbd75;font-size:12px;margin-top:9px}
+        .member-upi {
+            padding:13px 0;border-bottom:1px solid rgba(255,255,255,.08);
+        }
+        .member-upi:last-child {border-bottom:none}
+        .member-upi form {margin-top:10px}
+        .member-upi input {margin-bottom:8px}
+        .member-upi button {width:auto;padding:9px 14px}
+        .member-upi small {color:#929bb5}
+        .upi-heading {margin-top:24px}
+        @media(max-width:480px) {
+            .activity-item {gap:10px}
+            .activity-amount {font-size:13px}
+            .share-row input {max-width:105px}
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <header class="topbar">
+        <a class="brand" href="/">SplitMate<span style="color:#36d6a0">.</span></a>
+        <a class="back-link" href="/">← All groups</a>
+    </header>
+
+    <main>
+        <section class="hero group-hero">
+            <p class="eyebrow">YOUR GROUP</p>
+            <h1>{{ group.name }}</h1>
+            <p>Track expenses and settle up with your roommates.</p>
+        </section>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="notice">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section class="stats">
+            <div class="stat panel">
+                <span>Total expenses</span>
+                <strong>₹{{ "%.2f"|format(total_expenses) }}</strong>
+            </div>
+            <div class="stat panel">
+                <span>Group members</span>
+                <strong>{{ members|length }}</strong>
+            </div>
+            <div class="stat panel">
+                <span>Recorded repayments</span>
+                <strong>{{ settlements|length }}</strong>
+            </div>
+        </section>
+
+        <div class="two-columns">
+
+            <section class="panel">
+                <h2>+ Add member</h2>
+                <form method="POST">
+                    <input type="hidden" name="action" value="add_member">
+
+                    <label>Member name</label>
+                    <input type="text" name="member_name"
+                           placeholder="Enter member name"
+                           required maxlength="60">
+
+                    <label>UPI ID (optional)</label>
+                    <input class="upi-input" type="text" name="upi_id"
+                           placeholder="example@okaxis" maxlength="100">
+
+                    <button type="submit">Add member</button>
+                </form>
+            </section>
+
+            <section class="panel">
+                <h2>+ Add expense</h2>
+
+                {% if members %}
+                <form method="POST" id="expenseForm">
+                    <input type="hidden" name="action" value="add_expense">
+
+                    <label>Expense description</label>
+                    <input type="text" name="description"
+                           placeholder="e.g. Groceries"
+                           required maxlength="100">
+
+                    <label>Amount (₹)</label>
+                    <input type="number" id="expenseAmount"
+                           name="amount" min="0.01" step="0.01"
+                           placeholder="Enter amount" required>
+
+                    <label>Expense category</label>
+                    <select name="category" class="category-select" required>
+                        {% for category in categories %}
+                        <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label>Paid by</label>
+                    <select name="paid_by" required>
+                        {% for member in members %}
+                        <option value="{{ member.id }}">{{ member.name }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label>How should the expense be split?</label>
+                    <div class="split-options">
+                        <label class="split-option">
+                            <input type="radio" name="split_type" value="equal" checked>
+                            Equal Split
+                        </label>
+                        <label class="split-option">
+                            <input type="radio" name="split_type" value="custom">
+                            Custom Split
+                        </label>
+                    </div>
+
+                    <div class="custom-split-box" id="customSplitBox">
+                        <h3>Custom member shares</h3>
+                        <p>Enter how much each member owes.</p>
+
+                        {% for member in members %}
+                        <div class="share-row">
+                            <label for="share_{{ member.id }}">{{ member.name }}</label>
+                            <input type="number"
+                                   id="share_{{ member.id }}"
+                                   name="share_{{ member.id }}"
+                                   class="member-share"
+                                   min="0" step="0.01"
+                                   placeholder="₹0.00" disabled>
+                        </div>
+                        {% endfor %}
+
+                        <div class="share-total">
+                            <span>Total shares</span>
+                            <span>₹<span id="shareTotal">0.00</span></span>
+                        </div>
+                        <div class="share-status" id="shareStatus">
+                            Enter the amount for each member.
+                        </div>
+                    </div>
+
+                    <button type="submit" id="expenseSubmit">
+                        Add expense · Split equally
+                    </button>
+                </form>
+                {% else %}
+                <p class="muted">Pehle group mein members add karo.</p>
+                {% endif %}
+            </section>
+        </div>
+
+        <section class="panel">
+            <h2>Group members</h2>
+            <div class="member-list">
+                {% for member in members %}
+                <div class="member-chip">
+                    <span class="avatar">{{ member.name[0]|upper }}</span>
+                    {{ member.name }}
+                </div>
+                {% else %}
+                <p class="muted">No members added yet.</p>
+                {% endfor %}
+            </div>
+
+            <h3 class="upi-heading">UPI IDs</h3>
+            <p class="muted">Add or update a member's UPI ID to enable payment links.</p>
+
+            {% for member in members %}
+            <div class="member-upi">
+                <strong>{{ member.name }}</strong>
+                <small>
+                    {% if member.upi_id %}
+                        {{ member.upi_id }}
+                    {% else %}
+                        UPI ID not added
+                    {% endif %}
+                </small>
+
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_upi">
+                    <input type="hidden" name="member_id" value="{{ member.id }}">
+
+                    <input class="upi-input" type="text" name="upi_id"
+                           value="{{ member.upi_id or '' }}"
+                           placeholder="Enter UPI ID (example@okaxis)"
+                           maxlength="100">
+
+                    <button type="submit">
+                        {% if member.upi_id %}Update UPI ID{% else %}Save UPI ID{% endif %}
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </section>
+
+        <section class="panel">
+            <h2>Member balances</h2>
+            <p class="muted">
+                Positive means they should receive money.
+                Negative means they owe money.
+            </p>
+
+            {% for b in balances %}
+            <div class="balance-row">
+                <div>
+                    <strong>{{ b.name }}</strong>
+                    <small>Paid ₹{{ "%.2f"|format(b.paid) }} · Share ₹{{ "%.2f"|format(b.share) }}</small>
+                    <small>Sent ₹{{ "%.2f"|format(b.sent) }} · Received ₹{{ "%.2f"|format(b.received) }}</small>
+                </div>
+                <strong class="{{ 'positive' if b.net > 0 else 'negative' if b.net < 0 else 'neutral' }}">
+                    {% if b.net > 0 %}+{% endif %}₹{{ "%.2f"|format(b.net) }}
+                </strong>
+            </div>
+            {% else %}
+            <p class="muted">Add members and expenses to see balances.</p>
+            {% endfor %}
+        </section>
+
+        <section class="panel">
+            <h2>Suggested settlements</h2>
+            <p class="muted">
+                Suggested transfers based on current balances.
+                Payment links open a UPI app; they do not record a repayment automatically.
+            </p>
+
+            {% for item in suggestions %}
+            <div class="upi-card">
+                <strong>{{ item.from }}</strong> pays
+                <strong>{{ item.to }}</strong>
+                <div style="font-size:20px;font-weight:800;margin-top:8px;color:#36d6a0">
+                    ₹{{ "%.2f"|format(item.amount) }}
+                </div>
+
+                {% if item.upi_link %}
+                    <a class="upi-action" href="{{ item.upi_link }}">
+                        Pay ₹{{ "%.2f"|format(item.amount) }} via UPI ↗
+                    </a>
+                {% else %}
+                    <div class="upi-missing">
+                        Receiver ka UPI ID add karo to enable payment.
+                    </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="muted">Everyone is settled up, or there are no expenses yet.</p>
+            {% endfor %}
+        </section>
+
+        <section class="panel">
+            <h2>Record repayment</h2>
+            {% if members|length > 1 %}
+            <form method="POST">
+                <input type="hidden" name="action" value="record_settlement">
+
+                <label>Paid by</label>
+                <select name="from_member" required>
+                    {% for member in members %}
+                    <option value="{{ member.id }}">{{ member.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <label>Paid to</label>
+                <select name="to_member" required>
+                    {% for member in members %}
+                    <option value="{{ member.id }}">{{ member.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <label>Amount (₹)</label>
+                <input type="number" name="settlement_amount"
+                       min="0.01" step="0.01"
+                       placeholder="Enter repayment amount" required>
+
+                <button type="submit">Record repayment</button>
+            </form>
+            {% else %}
+            <p class="muted">
+                Repayment record karne ke liye kam se kam 2 members chahiye.
+            </p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <p class="eyebrow">LIVE GROUP HISTORY</p>
+            <h2>Recent Activity</h2>
+            <p class="muted">All recorded expenses and repayments in this group.</p>
+
+            {% for expense in expenses %}
+            <div class="activity-item">
+                <div class="activity-icon expense">🛒</div>
+                <div class="activity-info">
+                    <strong>{{ expense.description }}</strong>
+                    <small>Paid by {{ expense.payer_name or 'Unknown' }}</small>
+                    <small>{{ expense.created_at }}</small>
+                    <span class="category-badge">{{ expense.category or 'Other' }}</span>
+                </div>
+                <div class="activity-amount expense">
+                    ₹{{ "%.2f"|format(expense.amount) }}
+                </div>
+            </div>
+            {% endfor %}
+
+            {% for s in settlements %}
+            <div class="activity-item">
+                <div class="activity-icon payment">↗</div>
+                <div class="activity-info">
+                    <strong>{{ s.sender_name }} → {{ s.receiver_name }}</strong>
+                    <small>Repayment recorded</small>
+                    <small>{{ s.created_at }}</small>
+                    <span class="activity-label">REPAYMENT</span>
+                </div>
+                <div class="activity-amount payment">
+                    ₹{{ "%.2f"|format(s.amount) }}
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not expenses and not settlements %}
+            <p class="muted" style="margin-top:20px;">
+                No activity yet. Add your first expense to get started.
+            </p>
+            {% endif %}
+        </section>
+
+        <section class="danger-zone">
+            <form method="POST"
+                  action="{{ url_for('delete_group', group_id=group.id) }}"
+                  onsubmit="return confirm('Delete this group and its records?')">
+                <button class="danger-button" type="submit">
+                    Delete this group
+                </button>
+            </form>
+        </section>
+    </main>
+
+    <footer>SplitMate · {{ group.name }}</footer>
+</div>
+
+<script>
+const splitRadios = document.querySelectorAll('input[name="split_type"]');
+const customBox = document.getElementById('customSplitBox');
+const shareInputs = document.querySelectorAll('.member-share');
+const expenseAmount = document.getElementById('expenseAmount');
+const shareTotal = document.getElementById('shareTotal');
+const shareStatus = document.getElementById('shareStatus');
+const expenseSubmit = document.getElementById('expenseSubmit');
+
+function updateSplitMode() {
+    const selected = document.querySelector('input[name="split_type"]:checked');
+    const customMode = selected && selected.value === 'custom';
+
+    customBox.style.display = customMode ? 'block' : 'none';
+
+    shareInputs.forEach(input => {
+        input.disabled = !customMode;
+        input.required = customMode;
+    });
+
+    expenseSubmit.textContent = customMode
+        ? 'Add expense · Custom Split'
+        : 'Add expense · Split equally';
+
+    updateShareTotal();
+}
+
+function updateShareTotal() {
+    let total = 0;
+
+    shareInputs.forEach(input => {
+        if (input.value !== '') total += Number(input.value);
+    });
+
+    total = Math.round((total + Number.EPSILON) * 100) / 100;
+    shareTotal.textContent = total.toFixed(2);
+
+    const expense = Number(expenseAmount.value);
+    const customMode = document.querySelector(
+        'input[name="split_type"]:checked'
+    )?.value === 'custom';
+
+    if (!customMode) {
+        shareStatus.textContent = 'Equal split selected.';
+        shareStatus.className = 'share-status';
+        return;
+    }
+
+    if (!expenseAmount.value || !Number.isFinite(expense)) {
+        shareStatus.textContent = 'Enter the total expense amount first.';
+        shareStatus.className = 'share-status';
+    } else if (Math.abs(total - expense) < 0.001) {
+        shareStatus.textContent = '✓ Shares match the expense amount.';
+        shareStatus.className = 'share-status valid';
+    } else {
+        shareStatus.textContent =
+            'Remaining: ₹' + (expense - total).toFixed(2);
+        shareStatus.className = 'share-status invalid';
+    }
+}
+
+splitRadios.forEach(radio => radio.addEventListener('change', updateSplitMode));
+shareInputs.forEach(input => input.addEventListener('input', updateShareTotal));
+expenseAmount.addEventListener('input', updateShareTotal);
+
+updateSplitMode();
+</script>
+</body>
+</html>
